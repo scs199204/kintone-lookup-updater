@@ -175,7 +175,11 @@ const validate = () => {
 
   //必須項目のチェック
   if (!targetAppMode.value) {
-    errorArray.push('更新対象アプリＤは必須項目です。');
+    errorArray.push('更新対象アプリは必須項目です。');
+  } else {
+    if (targetDateMode.value != 'all' && targetApp.value.length == 1 && targetApp.value[0].appId == '') {
+      errorArray.push('更新対象アプリが「全て」以外の場合、対象アプリ一覧の入力は必須です。');
+    }
   }
   if (!targetField.value) {
     errorArray.push('対象フィールドは必須項目です。');
@@ -193,10 +197,14 @@ const validate = () => {
     }
   }
 
-  //その他コピーフィールドのチェック
+  //対象アプリ一覧の入力内容
   for (const targetAppRow of targetApp.value) {
     if (isDuplicateError(targetAppRow, targetApp.value)) {
       errorArray.push('同じアプリＩＤを設定しています。');
+      break;
+    }
+    if (targetAppRow.appName == '該当アプリは存在しません。' || targetAppRow.appName == '') {
+      errorArray.push('存在するアプリを指定してください。');
       break;
     }
   }

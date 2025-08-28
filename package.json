@@ -1,0 +1,25 @@
+{
+  "name": "kintone-lookup-updater",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "clean": "rimraf dist kintone-plugin.zip",
+    "pack": "kintone-plugin-packer dist --out kintone-plugin.zip --ppk src.akoikhmmjaloafjjmjapnkfjicjheham.private.ppk",
+    "upload": "kintone-plugin-uploader kintone-plugin.zip --base-url \"%KINTONE_BASE_URL%\" --username \"%KINTONE_USERNAME%\" --password \"%KINTONE_PASSWORD%\"",
+    "build:upload": "npm run clean && npm run build && npm run pack && npm run upload"
+  },
+  "dependencies": {
+    "vite-plugin-css-injected-by-js": "^3.5.2",
+    "vue": "^3.5.18"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^6.0.1",
+    "cross-env": "^10.0.0",
+    "rimraf": "^6.0.1",
+    "vite": "^7.1.2"
+  }
+}

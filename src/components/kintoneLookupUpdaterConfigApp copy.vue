@@ -35,7 +35,7 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="(targetAppRow, index) in targetApp" :key="targetAppRow.id">
+          <tr v-for="(targetAppRow, index) in targetApp" :key="targetApp.id">
             <td>
               <input
                 type="number"
@@ -43,7 +43,7 @@
                 @change="targetAppIdChange(index)"
                 id="targetAppId"
                 class="text-input"
-                :class="{ 'input-error': isDuplicateError(targetAppRow, targetApp) || isAppNotFound(targetAppRow) }"
+                :class="{ 'input-error': isDuplicateError(targetAppRow, targetApp) || isAppNotFound }"
               />
             </td>
             <td>
@@ -166,7 +166,7 @@ const hasError = ref(false);
 const hasErrorApp = ref(false);
 const hasErrorField = ref(false);
 const hasErrorDate = ref(false);
-
+const isAppNotFound = ref(false);
 const errorMessage = ref('');
 const errorMessageApp = ref('');
 const errorMessageField = ref('');
@@ -182,95 +182,106 @@ const isDuplicateError = (param, array) => {
   return count > 1;
 };
 
-// アプリが存在しないかどうかのバリデーション
-const isAppNotFound = (param) => {
-  return param.appName === '該当アプリは存在しません。';
-};
-
 // 登録時に全体のエラーチェック
 const validate = () => {
-  const errors = {};
-  errors.app = [];
-  errors.appTable = [];
-  errors.field = [];
-  errors.date = [];
+  const errorArray = [];
+  const errorArrayApp = [];
+  const errorArrayField = [];
+  const errorArrayDate = [];
+  errorMessage.value = '';
+  errorMessageApp.value = '';
+  errorMessageField.value = '';
+  errorMessageDate.value = '';
+  hasError.value = false;
+  hasErrorApp.value = false;
+  hasErrorField.value = false;
+  hasErrorDate.value = false;
 
-  // ヘルパー関数: エラーメッセージを設定
-  const setErrors = (errorArray, hasErrorRef, errorMessageRef) => {
-    if (errorArray.length > 0) {
-      hasErrorRef.value = true;
-      errorMessageRef.value = errorArray.join('\n');
-      return false;
-    }
-    return true;
-  };
-
-  // 全てのエラー状態をリセット
-  hasError.value = hasErrorApp.value = hasErrorField.value = hasErrorDate.value = false;
-  errorMessage.value = errorMessageApp.value = errorMessageField.value = errorMessageDate.value = '';
-
-  // 必須項目のチェック
+  //必須項目のチェック
   if (!targetAppMode.value) {
-    errors.app.push('更新対象アプリは必須項目です。');
+    errorArray.push('更新対象アプリは必須項目です。');
   } else {
-    // targetAppModeが 'all' でない場合のチェック
-    if (targetAppMode.value !== 'all' && (targetApp.value.length === 0 || targetApp.value[0].appId === '')) {
-      errors.appTable.push('更新対象アプリが「全て」以外の場合、対象アプリ一覧の入力は必須です。');
+    if (targetDateMode.value != 'all' && targetApp.value.length == 1 && targetApp.value[0].appId == '') {
+      errorArrayApp.push('更新対象アプリが「全て」以外の場合、対象アプリ一覧の入力は必須です。');
     }
   }
-
   if (!targetField.value) {
-    errors.field.push('対象フィールドは必須項目です。');
+    errorArrayField.push('対象フィールドは必須項目です。');
   }
-
   if (!targetDateMode.value) {
-    errors.date.push('更新対象日付は必須項目です。');
-  } else if (targetDateMode.value !== 'all') {
-    if (!targetDateCondition.value) {
-      errors.date.push('更新対象日付が「全て」以外の場合、日付条件は必須です。');
-    }
-    if (!targetDate.value) {
-      errors.date.push('更新対象日付が「全て」以外の場合、日付は必須です。');
+    errorArrayDate.push('更新対象日付は必須項目です。');
+  } else {
+    if (targetDateMode.value != 'all') {
+      if (!targetDateCondition.value) {
+        errorArrayDate.push('更新対象日付が「全て」以外の場合、更新対象日付は必須です。');
+      }
+      if (!targetDate.value) {
+        errorArrayDate.push('更新対象日付が「全て」以外の場合、日付は必須です。');
+      }
     }
   }
 
-  // 対象アプリ一覧の入力内容
+  //対象アプリ一覧の入力内容
   for (const targetAppRow of targetApp.value) {
     if (isDuplicateError(targetAppRow, targetApp.value)) {
-      errors.appTable.push('同じアプリＩＤを設定しています。');
+      errorArrayApp.push('同じアプリＩＤを設定しています。');
       break;
     }
-    if (isAppNotFound(targetAppRow)) {
-      errors.appTable.push('存在するアプリを指定してください。');
+    if (targetAppRow.appName == '該当アプリは存在しません。' || targetAppRow.appName == '') {
+      errorArrayApp.push('存在するアプリを指定してください。');
       break;
     }
   }
 
-  const result1 = setErrors(errors.app, hasError, errorMessage);
-  const result2 = setErrors(errors.appTable, hasErrorApp, errorMessageApp);
-  const result3 = setErrors(errors.field, hasErrorField, errorMessageField);
-  const result4 = setErrors(errors.date, hasErrorDate, errorMessageDate);
-
-  return result1 && result2 && result3 && result4;
+  let result = true;
+  if (errorArray.length > 0) {
+    errorMessage.value = errorArray.join('\n');
+    hasError.value = true;
+    result = false;
+  }
+  if (errorArrayApp.length > 0) {
+    errorMessageApp.value = errorArrayApp.join('\n');
+    hasErrorApp.value = true;
+    result = false;
+  }
+  if (errorArrayField.length > 0) {
+    errorMessageField.value = errorArrayField.join('\n');
+    hasErrorField.value = true;
+    result = false;
+  }
+  if (errorArrayDate.length > 0) {
+    errorMessageDate.value = errorArrayDate.join('\n');
+    hasErrorDate.value = true;
+    result = false;
+  }
+  return result;
 };
 
-//targetAppModeが変更された際の処理
-const targetAppModeChange = () => {
-  // 特に処理がない場合は空のままでOK
+//
+const targetAppModeChange = async (event) => {
+  try {
+  } catch (e) {
+    alert(e.message);
+    console.error('name: ' + e.name + ' message: ' + e.message);
+  }
 };
 
 //抽出条件の取得元アプリフィールド変更時、対象アプリフィールドは同じフィールドタイプのみ指定できる
-const targetAppIdChange = (index) => {
+const targetAppIdChange = async (index) => {
   const appId = targetApp.value[index].appId;
-  targetApp.value[index].appName = '';
+  targetApp.value[index].appName = ''; //いったん空文字にする
   if (!appId) {
+    isAppNotFound.value = false; //アプリIDが空文字の場合は、処理を終了
     return;
   }
+
   const appName = allApps.value.find((item) => item.appId == appId);
   if (!appName) {
     targetApp.value[index].appName = '該当アプリは存在しません。';
+    isAppNotFound.value = true;
   } else {
     targetApp.value[index].appName = appName.name;
+    isAppNotFound.value = false;
   }
 };
 
@@ -312,12 +323,12 @@ const cancel = () => {
   window.location.href = '/k/admin/app/' + kintone.app.getId() + '/plugin/';
 };
 
-//テーブル行追加
+//その他コピーフィールドのテーブル行追加
 const addItem = (index) => {
   targetApp.value.splice(index + 1, 0, { id: Date.now(), appId: '', appName: '' });
 };
 
-//テーブル行削除
+//その他コピーフィールドのテーブル行削除
 const removeItem = (index) => {
   targetApp.value.splice(index, 1);
   if (targetApp.value.length === 0) {
@@ -356,6 +367,7 @@ const removeItem = (index) => {
   font-size: 20px;
   font-weight: 600;
   color: #34495e;
+  margin-bottom: 20px;
   border-left: 4px solid #4a90e2;
   padding-left: 10px;
 }

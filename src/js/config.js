@@ -85,37 +85,21 @@ import kintoneLookupUpdaterConfigApp from '../components/kintoneLookupUpdaterCon
   //★ 非同期処理（設定取得とフィールド情報取得）を Vue アプリ作成より前に行う
   //★★★★★★★★★★★★★★★★★★★★★★★★★★★
   const config = kintone.plugin.app.getConfig(PLUGIN_ID);
-  let { targetAppMode, targetApp, targetField, targetDateMode, targetDateCondition, targetDate } = config;
-
-  // nullの場合の初期値
-  if (!targetAppMode) targetAppMode = '';
-  if (!targetField) targetField = '';
-  if (!targetDateMode) targetDateMode = '';
-  if (!targetDateMode) targetDateCondition = '';
-  if (!targetDate) targetDate = '';
-
-  if (!targetApp) {
-    targetApp = [{ id: 1, appId: '', appName: '' }];
-  } else {
-    targetApp = JSON.parse(config['targetApp']);
-  }
-
-  const fieldTypeArray = ['SINGLE_LINE_TEXT', 'NUMBER', 'CALC', 'LINK', 'RECORD_NUMBER'];
-  const TargetFields = await getSourceAppField(fieldTypeArray);
-  //const TargetField = await KintoneConfigHelper.getFields(fieldTypeArray);
-  const optionTargetFields = setDropDown(TargetFields);
-
-  const allApps = await getAllApp();
 
   // Vueコンポーネントに渡す初期データとオプション
   const initialConfig = {
-    targetAppMode,
-    targetApp,
-    targetField,
-    targetDateMode,
-    targetDateCondition,
-    targetDate,
+    targetAppMode: config.targetAppMode || '',
+    targetApp: config.targetApp ? JSON.parse(config.targetApp) : [{ id: 1, appId: '', appName: '' }],
+    targetField: config.targetField || '',
+    targetDateMode: config.targetDateMode || '',
+    targetDateCondition: config.targetDateCondition || '',
+    targetDate: config.targetDate || '',
   };
+
+  const fieldTypeArray = ['SINGLE_LINE_TEXT', 'NUMBER', 'CALC', 'LINK', 'RECORD_NUMBER'];
+  const TargetFields = await getSourceAppField(fieldTypeArray);
+  const optionTargetFields = setDropDown(TargetFields);
+  const allApps = await getAllApp();
 
   let appElement = document.getElementById('app');
   if (!appElement) {

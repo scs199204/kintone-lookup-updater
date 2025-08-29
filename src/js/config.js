@@ -1,6 +1,4 @@
-// Vueの createApp をインポート
 import { createApp } from 'vue';
-// 作成したVueコンポーネントをインポート
 import kintoneLookupUpdaterConfigApp from '../components/kintoneLookupUpdaterConfigApp.vue';
 
 (async function (PLUGIN_ID) {

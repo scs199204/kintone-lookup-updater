@@ -138,20 +138,21 @@ const optionTargetAppMode = ref([
   { id: 'except', name: '指定したアプリ以外' },
 ]);
 
-//
+//更新対象日付
 const optionTargetDateMode = ref([
   { id: 'all', name: '全て' },
   { id: 'createDate', name: '作成日' },
   { id: 'updateDate', name: '更新日' },
 ]);
 
+//日付条件
 const optionTargetDateCondition = ref([
   { id: 'same', name: '指定日' },
   { id: 'later', name: '指定日以後' },
   { id: 'before', name: '指定日以前' },
 ]);
 
-//リアクティブな変数(sourceAppId.valueでアクセス)
+//リアクティブな変数(.valueでアクセス)
 const targetAppMode = ref(props.initialConfig.targetAppMode);
 const targetApp = ref(props.initialConfig.targetApp);
 const targetField = ref(props.initialConfig.targetField);
@@ -159,8 +160,8 @@ const targetDateMode = ref(props.initialConfig.targetDateMode);
 const targetDateCondition = ref(props.initialConfig.targetDateCondition);
 const targetDate = ref(props.initialConfig.targetDate);
 
-const optionTargetFields = ref(props.optionTargetFields);
-const allApps = ref(props.allApps);
+const optionTargetFields = ref(props.optionTargetFields); //重複禁止が設定されたフィールド
+const allApps = ref(props.allApps); //サブドメイン内の全てのアプリ
 
 const hasError = ref(false);
 const hasErrorApp = ref(false);
@@ -172,13 +173,12 @@ const errorMessageApp = ref('');
 const errorMessageField = ref('');
 const errorMessageDate = ref('');
 
-// カスタムモーダルの表示用
-const showSuccessModal = ref(false);
+const showSuccessModal = ref(false); // カスタムモーダルの表示用
 
 // テーブル内でのフィールド重複のバリデーション
 const isDuplicateError = (param, array) => {
   const allTargetAppId = array.map((p) => p.appId).filter((f) => f !== '');
-  const count = allTargetAppId.filter((f) => f === param.appId).length;
+  const count = allTargetAppId.filter((f) => f === param.appId).length; //同じアプリIDを複数行で指定していないか
   return count > 1;
 };
 
@@ -234,7 +234,7 @@ const validate = () => {
     }
   }
 
-  // 対象アプリ一覧の入力内容
+  // 対象アプリ一覧のアプリID変更時…targetAppRow.appId変更時に:classが再評価される(isDuplicateError実行)
   for (const targetAppRow of targetApp.value) {
     if (isDuplicateError(targetAppRow, targetApp.value)) {
       errors.appTable.push('同じアプリＩＤを設定しています。');
@@ -259,7 +259,7 @@ const targetAppModeChange = () => {
   // 特に処理がない場合は空のままでOK
 };
 
-//抽出条件の取得元アプリフィールド変更時、対象アプリフィールドは同じフィールドタイプのみ指定できる
+//対象アプリ一覧のアプリID変更時
 const targetAppIdChange = (index) => {
   const appId = targetApp.value[index].appId;
   targetApp.value[index].appName = '';
@@ -326,6 +326,7 @@ const removeItem = (index) => {
 };
 </script>
 
+<!-- <style scoped>：コンポーネント内の要素にのみスタイルを適用する -->
 <style scoped>
 /* 基本的なリセットとレイアウト */
 .plugin-config-container {
@@ -578,7 +579,7 @@ const removeItem = (index) => {
   box-shadow: 0 6px 15px rgba(0, 0, 0, 0.05);
 }
 
-/* カスタムモーダル */
+/* カスタムモーダル :global…VueのScoped CSS内でそのクラスをグローバルなスタイルとして適用できる */
 :global(.custom-modal-overlay) {
   position: fixed;
   top: 0;

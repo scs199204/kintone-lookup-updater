@@ -41,13 +41,12 @@
                 type="number"
                 v-model="targetAppRow.appId"
                 @change="targetAppIdChange(index)"
-                id="targetAppId"
                 class="text-input"
-                :class="{ 'input-error': isDuplicateError(targetAppRow, targetApp) || isAppNotFound(targetAppRow) }"
+                :class="{ 'input-error': isDuplicateError(targetAppRow, targetApp) || isAppNotFound(targetAppRow) || isSelf(targetAppRow) }"
               />
             </td>
             <td>
-              <input type="text" :value="targetAppRow.appName" id="targetAppName" class="text-input" readonly />
+              <input type="text" :value="targetAppRow.appName" class="text-input" readonly />
             </td>
             <td class="table-actions">
               <button @click="addItem(index)" type="button" class="action-icon-button add-button" title="行を追加"></button>
@@ -124,6 +123,8 @@
 <script setup>
 import { ref } from 'vue';
 
+const APP_ID = kintone.app.getId();
+
 //config.jsから渡される引数(変数、関数)
 const props = defineProps({
   initialConfig: Object,
@@ -187,6 +188,10 @@ const isAppNotFound = (param) => {
   return param.appName === '該当アプリは存在しません。';
 };
 
+const isSelf = (param) => {
+  return param.appName === '自アプリを対象にはできません。';
+};
+
 // 登録時に全体のエラーチェック
 const validate = () => {
   const errors = {};
@@ -244,6 +249,10 @@ const validate = () => {
       errors.appTable.push('存在するアプリを指定してください。');
       break;
     }
+    if (isSelf(targetAppRow)) {
+      errors.appTable.push('自アプリの行を削除してください。');
+      break;
+    }
   }
 
   const result1 = setErrors(errors.app, hasError, errorMessage);
@@ -269,6 +278,8 @@ const targetAppIdChange = (index) => {
   const appName = allApps.value.find((item) => item.appId == appId);
   if (!appName) {
     targetApp.value[index].appName = '該当アプリは存在しません。';
+  } else if (appId == APP_ID) {
+    targetApp.value[index].appName = '自アプリを対象にはできません。';
   } else {
     targetApp.value[index].appName = appName.name;
   }
@@ -304,12 +315,12 @@ const register = () => {
 //モーダルウィンドウを閉じて、設定画面へ遷移
 const closeSuccessModal = () => {
   showSuccessModal.value = false;
-  window.location.href = '/k/admin/app/flow?app=' + kintone.app.getId();
+  window.location.href = '/k/admin/app/flow?app=' + APP_ID;
 };
 
 //キャンセルボタンクリック時
 const cancel = () => {
-  window.location.href = '/k/admin/app/' + kintone.app.getId() + '/plugin/';
+  window.location.href = '/k/admin/app/' + APP_ID + '/plugin/';
 };
 
 //テーブル行追加

@@ -88,12 +88,17 @@
   //★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
   const getSourceAppField = async () => {
     const sourceApps = [];
+    //ルックアップの参照元に指定できるフィールドタイプかを判定
+    const isLookupTargetFieldType = (field) => {
+      const fieldTypeArray = ['SINGLE_LINE_TEXT', 'NUMBER', 'CALC', 'LINK', 'RECORD_NUMBER']; //ルックアップ参照元に設定できるフィールド
+      return fieldTypeArray.some((targetFieldType) => targetFieldType == field);
+    };
     try {
-      const formResp = await kintone.api(kintone.api.url('/k/v1/app/form/fields.json', true), 'GET', { app: SOURCE_APP_ID }); //フィールドを取得
-      for (const fieldCode in formResp.properties) {
-        const field = formResp.properties[fieldCode];
-        //重複禁止のフィールドで、「重複禁止のフィールド全て」か、指定されたフィールドの場合
-        if (field?.unique && (CONFIG_TARGET_FIELD == 'sdpDropDownItemAllUniqueField' || CONFIG_TARGET_FIELD == field.code)) {
+      const properties = await kintone.app.getFormFields(); //フィール情報の取得
+      for (const fieldCode in properties) {
+        const field = properties[fieldCode];
+        //重複禁止のフィールドかつ、ルックアップ参照元に設定できるフィールドで、プラグインの設定が「重複禁止のフィールド全て」か、指定されたフィールドの場合抽出
+        if (field?.unique && isLookupTargetFieldType(field.type) && (CONFIG_TARGET_FIELD == 'sdpDropDownItemAllUniqueField' || CONFIG_TARGET_FIELD == field.code)) {
           sourceApps.push({ fieldCode: field.code, name: field.label, type: field.type });
         }
       }
@@ -168,7 +173,7 @@
         //条件に合致する要素のみ配列に追加
         const filteredApps = resp.apps.filter((respRec) => {
           if (CONFIG_TARGET_APP_MODE === 'all') {
-            return true; //全て
+            return respRec.appId != SOURCE_APP_ID; //自アプリを除く全て
           }
           if (CONFIG_TARGET_APP_MODE === 'specify') {
             return CONFIG_TARGET_APP.some((app) => app.appId == respRec.appId); //指定したアプリのみで指定されている
@@ -225,17 +230,16 @@
   //★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
   const updateTargetRecords = async (targetApps, sourceAppUniqueFieldValue) => {
     let errorCount = 0;
+
+    // 参照元レコードのキーを持つレコードを検索
+    const query = queryConditionGenerate(CONFIG_TARGET_DATE_MODE, CONFIG_TARGET_DATE_CONDITION, CONFIG_TARGET_DATE);
+    let offset = 0;
+    const limit = 500;
+
     // 各アプリに対して個別に更新リクエストを送信
     for (const app of targetApps) {
       /** 1アプリ更新用の配列 */
       const recordsToUpdate = [];
-
-      // 参照元レコードのキーを持つレコードを検索
-      //const query = `${TARGET_LOOKUP_FIELD_CODE} = "${updatedValueLookupKey}"`;
-      const query = queryConditionGenerate(CONFIG_TARGET_DATE_MODE, CONFIG_TARGET_DATE_CONDITION, CONFIG_TARGET_DATE);
-
-      let offset = 0;
-      const limit = 500;
       try {
         while (true) {
           const recordsResp = await kintone.api(kintone.api.url('/k/v1/records.json', true), 'GET', { app: app.appId, query, offset, limit }); //更新対象のアプリを500件ずつ読込む

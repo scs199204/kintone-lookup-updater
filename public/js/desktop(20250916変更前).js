@@ -25,6 +25,62 @@
     CONFIG_TARGET_APP = [{ id: 1, appId: '', appName: '' }];
   }
 
+  // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
+  // 自作のスピナーとオーバーレイ用のスタイルを定義
+  // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
+  const createLoadingOverlay = () => {
+    // すでに存在する場合は何もしない
+    if (document.getElementById('loading-overlay')) return;
+
+    // オーバーレイ要素を作成
+    const overlay = document.createElement('div');
+    overlay.id = 'loading-overlay';
+    overlay.style.position = 'fixed';
+    overlay.style.top = '0';
+    overlay.style.left = '0';
+    overlay.style.width = '100%';
+    overlay.style.height = '100%';
+    overlay.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
+    overlay.style.zIndex = '1000';
+    overlay.style.display = 'flex';
+    overlay.style.justifyContent = 'center';
+    overlay.style.alignItems = 'center';
+
+    // スピナー要素を作成
+    const spinner = document.createElement('div');
+    spinner.id = 'loading-spinner';
+    spinner.style.border = '4px solid #f3f3f3';
+    spinner.style.borderTop = '4px solid #3498db';
+    spinner.style.borderRadius = '50%';
+    spinner.style.width = '40px';
+    spinner.style.height = '40px';
+    spinner.style.animation = 'spin 1s linear infinite';
+
+    // スピナーのアニメーションを定義するスタイルタグを作成
+    const style = document.createElement('style'); //spinという名前のアニメーションを定義し、アニメーションの開始（0%）から終了（100%）までの間に、要素を0度から360度まで回転させる
+    style.innerHTML = `
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+    `;
+
+    document.head.appendChild(style);
+    overlay.appendChild(spinner);
+    document.body.appendChild(overlay);
+  };
+
+  const showLoading = () => {
+    createLoadingOverlay();
+    const overlay = document.getElementById('loading-overlay');
+    if (overlay) overlay.style.display = 'flex';
+  };
+
+  const hideLoading = () => {
+    const overlay = document.getElementById('loading-overlay');
+    if (overlay) overlay.style.display = 'none';
+  };
+
   //★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
   /** 自アプリのフィールドから、重複禁止のフィールドのみを抽出
    * @returns {array[object]} 重複禁止のフィールド(フィールドコード、ラベル、フィールドタイプ)
@@ -77,15 +133,16 @@
         if (recordsResp.records.length < limit) break;
         offset += limit; //レコードが500件の場合、繰り返す
       }
-      const result = {};
-      for (const [key, value] of Object.entries(valueArray)) {
-        result[key] = new Set(value); //存在判定を効率的に行うためにSetへ変換
-      }
-      return result;
     } catch (e) {
       console.error(`アプリID: ${SOURCE_APP_ID} のレコード取得に失敗しました。`, e);
       throw new Error(`アプリのレコード取得に失敗しました。エラー: ${e.message}`);
     }
+
+    const result = {};
+    for (const [key, value] of Object.entries(valueArray)) {
+      result[key] = new Set(value); //存在判定を効率的に行うためにSetへ変換
+    }
+    return result;
   };
 
   //★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
@@ -310,7 +367,8 @@
 
     // ボタンクリック時の処理
     menuButton.onclick = async () => {
-      await kintone.showLoading('VISIBLE');
+      menuButton.disabled = true; // 処理開始時にボタンを無効化
+      showLoading(); // 処理開始時にローディングを表示
 
       try {
         const sourceAppUniqueField = await getSourceAppField(); //自アプリのフィールド情報を取得
@@ -319,21 +377,17 @@
         const targetApps = await findTargetApps(sourceAppUniqueField); // 参照先アプリを検索
         if (targetApps.length > 0) {
           const errorCount = await updateTargetRecords(targetApps, sourceAppUniqueFieldValue); // 参照先アプリのレコードを更新
-          if (errorCount > 0) {
-            console.log(`ルックアップの更新が完了しました。エラー件数：${errorCount}件`);
-            await kintone.showNotification('ERROR', `ルックアップの更新が完了しました。エラー件数：${errorCount}件`);
-          } else {
-            console.log(`ルックアップの更新が完了しました。`);
-            await kintone.showNotification('SUCCESS', `ルックアップの更新が完了しました。`);
-          }
+          console.log(`ルックアップの更新が完了しました。エラー件数：${errorCount}件`);
+          alert(`ルックアップの更新が完了しました。エラー件数：${errorCount}件`);
         } else {
-          await kintone.showNotification('INFO', 'ルックアップを更新する対象のアプリが見つかりませんでした。');
+          alert('ルックアップを更新する対象のアプリが見つかりませんでした。');
         }
       } catch (error) {
         console.error('ルックアップの更新中にエラーが発生しました:', error);
-        await kintone.showNotification('ERROR', `ルックアップに失敗しました。エラー: ${error.message}。詳細は開発者ツールを確認してください。`);
+        alert(`ルックアップに失敗しました。エラー: ${error.message}。詳細は開発者ツールを確認してください。`);
       } finally {
-        await kintone.showLoading('HIDDEN');
+        hideLoading(); // 成功・失敗にかかわらず、ローディングを非表示
+        menuButton.disabled = false; // ボタンを再度有効化
       }
     };
     // レコード一覧のメニューの右側の要素を取得し、ボタンを配置

@@ -42,7 +42,7 @@
                 v-model="targetAppRow.appId"
                 @change="targetAppIdChange(index)"
                 class="text-input"
-                :class="{ 'input-error': isDuplicateError(targetAppRow, targetApp) || isAppNotFound(targetAppRow) || isSelf(targetAppRow) }"
+                :class="{ 'input-error': isDuplicateError(targetAppRow, targetApp, 'appId') || isAppNotFound(targetAppRow) || isSelf(targetAppRow) }"
               />
             </td>
             <td>
@@ -121,16 +121,13 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
+import { getAppFields, setAppDropDown, isDuplicateError, getAllApps } from './kintonePluginCommonFunction.js';
 
 const APP_ID = kintone.app.getId();
 
 //config.jsから渡される引数(変数、関数)
-const props = defineProps({
-  initialConfig: Object,
-  optionTargetFields: Array,
-  allApps: Array,
-});
+const props = defineProps(['initialConfig']);
 
 //更新対象アプリ
 const optionTargetAppMode = ref([
@@ -161,8 +158,8 @@ const targetDateMode = ref(props.initialConfig.targetDateMode);
 const targetDateCondition = ref(props.initialConfig.targetDateCondition);
 const targetDate = ref(props.initialConfig.targetDate);
 
-const optionTargetFields = ref(props.optionTargetFields); //重複禁止が設定されたフィールド
-const allApps = ref(props.allApps); //サブドメイン内の全てのアプリ
+const optionTargetFields = ref([]); //重複禁止が設定されたフィールド
+const allApps = ref([]); //サブドメイン内の全てのアプリ
 
 const hasError = ref(false);
 const hasErrorApp = ref(false);
@@ -176,12 +173,27 @@ const errorMessageDate = ref('');
 
 const showSuccessModal = ref(false); // カスタムモーダルの表示用
 
-// テーブル内でのフィールド重複のバリデーション
-const isDuplicateError = (param, array) => {
-  const allTargetAppId = array.map((p) => p.appId).filter((f) => f !== '');
-  const count = allTargetAppId.filter((f) => f === param.appId).length; //同じアプリIDを複数行で指定していないか
-  return count > 1;
-};
+const fieldTypeArray = ['SINGLE_LINE_TEXT', 'NUMBER', 'CALC', 'LINK', 'RECORD_NUMBER'];
+
+// onMountedで初期データを取得
+onMounted(async () => {
+  try {
+    const TargetFields = await getAppFields(APP_ID); //全てのフィールド
+    const targetProperties = { properties: {} }; //重複禁止フィールドのみ
+    for (const fieldCode in TargetFields.properties) {
+      if (TargetFields.properties[fieldCode].hasOwnProperty('unique') && TargetFields.properties[fieldCode].unique) {
+        targetProperties.properties[fieldCode] = TargetFields.properties[fieldCode];
+      }
+    }
+    const TargetFieldType = setAppDropDown(targetProperties, fieldTypeArray); //フィールドタイプで抽出
+    TargetFieldType.unshift({ id: 'sdpDropDownItemAllUniqueField', name: '重複禁止のフィールド全て', code: '重複禁止のフィールド全て', type: '' }); //先頭に追加
+    optionTargetFields.value = TargetFieldType;
+    allApps.value = await getAllApps();
+  } catch (error) {
+    hasError.value = true;
+    errorMessage.value = error.message;
+  }
+});
 
 // アプリが存在しないかどうかのバリデーション
 const isAppNotFound = (param) => {
@@ -241,7 +253,7 @@ const validate = () => {
 
   // 対象アプリ一覧のアプリID変更時…targetAppRow.appId変更時に:classが再評価される(isDuplicateError実行)
   for (const targetAppRow of targetApp.value) {
-    if (isDuplicateError(targetAppRow, targetApp.value)) {
+    if (isDuplicateError(targetAppRow, targetApp.value, 'appId')) {
       errors.appTable.push('同じアプリＩＤを設定しています。');
       break;
     }

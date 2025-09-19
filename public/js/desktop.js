@@ -144,13 +144,17 @@
         for (const fieldCode in formResp.properties) {
           const field = formResp.properties[fieldCode];
           if (isLookupTargetField(field, sourceAppUniqueField)) {
-            addItem.push({ value: fieldCode, relatedKeyField: field.lookup.relatedKeyField }); //更新対象フィールドに追加
+            addItem.push({ value: fieldCode, isSubtable: false, relatedKeyField: field.lookup.relatedKeyField }); //更新対象フィールドに追加
           } else if (field.type == 'SUBTABLE') {
+            const addItemSubtable = { value: field.code, isSubtable: true, column: [] };
             for (const subtableFieldCode in field.fields) {
               const subtableField = field.fields[subtableFieldCode]; //サブテーブルの場合、「properties.フィールドコード.fields」を判定
               if (isLookupTargetField(subtableField, sourceAppUniqueField)) {
-                addItem.push({ value: subtableFieldCode, tableName: field.code, relatedKeyField: subtableField.lookup.relatedKeyField }); //サブテーブルの更新対象フィールド
+                addItemSubtable.column.push({ field: subtableFieldCode, relatedKeyField: subtableField.lookup.relatedKeyField });
               }
+            }
+            if (addItemSubtable.column.length > 0) {
+              addItem.push(addItemSubtable); //サブテーブルの更新対象フィールド
             }
           }
         }
@@ -196,28 +200,32 @@
             };
             for (const targetFieldCode of app.fieldCode) {
               //サブテーブルの場合
-              if (targetFieldCode.hasOwnProperty('tableName')) {
+              //if (targetFieldCode.hasOwnProperty('tableName')) {
+              if (targetFieldCode.isSubtable) {
                 /** サブテール更新用の配列 */
                 const addTableItem = [];
                 //サブテーブルの全ての行
-                for (const row of record[targetFieldCode.tableName].value) {
+                for (const row of record[targetFieldCode.value].value) {
                   //値が処理時点で存在している(ルックアップで値を取得できる)か、値が存在しない場合は更新しない
-                  if (row.value[targetFieldCode.value].value && sourceAppUniqueFieldValue[targetFieldCode.relatedKeyField].has(row.value[targetFieldCode.value].value)) {
-                    /** サブテールを1行更新するためのオブジェクト */
-                    const addTableItemValue = {
-                      id: row.id,
-                      value: {
-                        [targetFieldCode.value]: { value: row.value[targetFieldCode.value].value },
-                      },
-                    };
-                    addTableItem.push(addTableItemValue); //サブテーブル更新用配列へ追加
+                  //サブテールを1行更新するためのオブジェクト
+                  const addTableItemValue = {
+                    id: row.id,
+                    value: {},
+                  };
+                  for (const column of targetFieldCode.column) {
+                    //更新できる場合のみ値をセット(idがある場合、更新するフィールドのみ値を入れることで対象フィールドのみ更新可能)
+                    if (sourceAppUniqueFieldValue[column.relatedKeyField].has(row.value[column.field].value)) {
+                      addTableItemValue.value[column.field] = { value: row.value[column.field].value };
+                    }
                   }
+                  addTableItem.push(addTableItemValue); //サブテーブル更新用配列へ追加(行が消えないように、全ての行を追加)
                 }
                 //サブテーブル内に更新する行が1行でもあれば追加
                 if (addTableItem.length > 0) {
-                  addItem.record[targetFieldCode.tableName] = { value: addTableItem }; //ルックアップフィールドを更新(サブテーブル)
+                  addItem.record[targetFieldCode.value] = { value: addTableItem }; //ルックアップフィールドを更新(サブテーブル)
                 }
               } else {
+                //サブテーブル以外のフィールド
                 //値が処理時点で存在している(ルックアップで値を取得できる)か判定、値が存在しない場合(参照元のレコードが削除された場合など)は更新しない
                 if (sourceAppUniqueFieldValue[targetFieldCode.relatedKeyField].has(record[targetFieldCode.value].value)) {
                   addItem.record[targetFieldCode.value] = { value: record[targetFieldCode.value].value }; //ルックアップフィールドを更新(同じ値)

@@ -146,7 +146,8 @@
           if (isLookupTargetField(field, sourceAppUniqueField)) {
             addItem.push({ value: fieldCode, isSubtable: false, relatedKeyField: field.lookup.relatedKeyField }); //更新対象フィールドに追加
           } else if (field.type == 'SUBTABLE') {
-            const addItemSubtable = { value: field.code, isSubtable: true, column: [] };
+            //サブテーブルの場合、テーブルの各列でルックアップ(自アプリの重複禁止フィールを参照先にしている)のフィールドの判定を行う
+            const addItemSubtable = { value: field.code, isSubtable: true, column: [] }; //columnに対象のフィールドを配列で保持
             for (const subtableFieldCode in field.fields) {
               const subtableField = field.fields[subtableFieldCode]; //サブテーブルの場合、「properties.フィールドコード.fields」を判定
               if (isLookupTargetField(subtableField, sourceAppUniqueField)) {
@@ -185,6 +186,22 @@
 
     // 各アプリに対して個別に更新リクエストを送信
     for (const app of targetApps) {
+      /*サブテーブル外
+      app = {
+        value: フィールドのフィールドコード,
+        isSubtable: false, //サブテーブルではないのでfalse
+        relatedKeyField: ルックアップの参照先のフィールドコード,
+      }
+     //サブテーブル
+      app = {
+        value: サブテーブルのフィールドコード,
+        isSubtable: true, //サブテーブルでなのでtrue
+        column :[{        //サブテーブル内のルックアップフィールドを配列で保持
+          field: ルックアップのフィールドコード,
+          relatedKeyField: ルックアップの参照先のフィールドコード,
+        }]
+      }
+      */
       /** 1アプリ更新用の配列 */
       const recordsToUpdate = [];
       try {
@@ -200,7 +217,6 @@
             };
             for (const targetFieldCode of app.fieldCode) {
               //サブテーブルの場合
-              //if (targetFieldCode.hasOwnProperty('tableName')) {
               if (targetFieldCode.isSubtable) {
                 /** サブテール更新用の配列 */
                 const addTableItem = [];

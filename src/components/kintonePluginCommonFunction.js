@@ -139,3 +139,10 @@ export function isDuplicateError(param, array, prop) {
   const count = allOutputFields.filter((f) => f === param[prop]).length;
   return count > 1;
 }
+
+//★★★★★★★★★★★★★★★★★★★★★★★★★★★
+//★ キャンセルボタンクリック時
+//★★★★★★★★★★★★★★★★★★★★★★★★★★★
+export function cancel() {
+  window.location.href = '/k/admin/app/' + kintone.app.getId() + '/plugin/';
+}

@@ -1,4 +1,5 @@
 //  1.0.0 ：2025/09/18　：新規作成
+//　1.0.1 ：2025/09/22　：setAppDropDown引数追加
 //★★★★★★★★★★★★★★★★★★★★★★★★★★★
 /** ルックアップ元アプリのフィールド情報を取得
  * @param {string} appId フィールドを取得するアプリのＩＤ
@@ -16,20 +17,25 @@ export async function getAppFields(appId) {
 }
 
 //★★★★★★★★★★★★★★★★★★★★★★★★★★★
-/** ルックアップ先のアプリから、フィールドを一覧で取得する
+/** フィールドを一覧で取得する
  * @param {object} SourceApp getAppFieldsの戻り値
- * @param {string[]} fieldType 抽出するフィールドタイプ
+ * @param {string[]} fieldType 抽出するフィールドタイプ(省略時：空、全てのフィールドタイプ)
+ * @param {string} subtableCode サブテーブル内のフィールドを抽出する場合、サブテーブルのフィールドコード(省略時：nullサブテーブル外のフィールド)
  * @returns {object[]} label：フィールドコード、value：フィールドコード、type：フィールドのタイプ
  */
 //★★★★★★★★★★★★★★★★★★★★★★★★★★★
-export function setAppDropDown(app, fieldType) {
+export function setAppDropDown(app, fieldType = [], subtableCode = null) {
   const result = [];
   if (!app) {
-    //ルックアップ先アプリ設定がない
   } else {
-    //ルックアップ先アプリの情報がある場合
-    for (const [key, value] of Object.entries(app.properties)) {
-      if (fieldType.find((item) => item == value.type)) {
+    let propertiesTarget;
+    if (!subtableCode) {
+      propertiesTarget = app.properties; //サブテーブル外のフィールド
+    } else {
+      propertiesTarget = app.properties[subtableCode].fields; //指定したサブテーブル内のフィールド
+    }
+    for (const [key, value] of Object.entries(propertiesTarget)) {
+      if (fieldType.length == 0 || fieldType.find((item) => item == value.type)) {
         //ルックアップ先アプリのラベル・フィールドコードを配列に出力
         const addItem = {
           id: value.code,
